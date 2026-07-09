@@ -16,6 +16,59 @@ $('open-options').addEventListener('click', (e) => {
   chrome.runtime.openOptionsPage();
 });
 
+const HISTORY_LIMIT = 50;
+
+async function saveHistoryEntry(entry) {
+  const { history = [] } = await chrome.storage.local.get('history');
+  history.unshift(entry);
+  await chrome.storage.local.set({ history: history.slice(0, HISTORY_LIMIT) });
+}
+
+async function renderHistory() {
+  const { history = [] } = await chrome.storage.local.get('history');
+  const ul = $('history-list');
+  ul.replaceChildren();
+  if (!history.length) {
+    const li = document.createElement('li');
+    li.textContent = 'No evaluations yet.';
+    ul.appendChild(li);
+    return;
+  }
+  for (const entry of history) {
+    const li = document.createElement('li');
+    const title = document.createElement('span');
+    title.textContent =
+      `${entry.overall}/100 ${entry.verdict} — ${[entry.role, entry.company].filter(Boolean).join(' at ')}`;
+    const meta = document.createElement('span');
+    meta.className = 'meta';
+    meta.textContent = `${new Date(entry.ts).toLocaleString()} · ${entry.url || ''}`;
+    li.append(title, meta);
+    ul.appendChild(li);
+  }
+}
+
+$('open-history').addEventListener('click', async (e) => {
+  e.preventDefault();
+  const section = $('history-section');
+  if (section.hidden) await renderHistory();
+  section.hidden = !section.hidden;
+});
+
+$('export-history').addEventListener('click', async () => {
+  const { history = [] } = await chrome.storage.local.get('history');
+  const blob = new Blob([JSON.stringify(history, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `jobfit-history-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+$('clear-history').addEventListener('click', async () => {
+  await chrome.storage.local.remove('history');
+  await renderHistory();
+});
+
 function setStatus(text, isError = false) {
   const el = $('status');
   el.hidden = !text;
@@ -163,6 +216,15 @@ $('evaluate').addEventListener('click', async () => {
     lastEvaluation = evaluation;
     setStatus('');
     renderEvaluation(evaluation, overall);
+    await saveHistoryEntry({
+      ts: Date.now(),
+      url: tab.url,
+      role: evaluation.role,
+      company: evaluation.company,
+      overall,
+      verdict: verdictFor(overall),
+      evaluation,
+    });
   } catch (err) {
     setStatus(String(err.message || err), true);
   } finally {

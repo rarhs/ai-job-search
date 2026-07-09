@@ -7,7 +7,10 @@
 <body>
   <header>
     <h1>JobFit</h1>
-    <a href="#" id="open-options">Settings</a>
+    <nav>
+      <a href="#" id="open-history">History</a>
+      <a href="#" id="open-options">Settings</a>
+    </nav>
   </header>
 
   <div id="status" hidden></div>
@@ -43,6 +46,15 @@
     <div class="row">
       <button id="copy-letter">Copy to clipboard</button>
       <span id="copy-status"></span>
+    </div>
+  </section>
+
+  <section id="history-section" hidden>
+    <h3>Evaluation history</h3>
+    <ul id="history-list"></ul>
+    <div class="row">
+      <button id="export-history">Export JSON</button>
+      <button id="clear-history">Clear</button>
     </div>
   </section>
 

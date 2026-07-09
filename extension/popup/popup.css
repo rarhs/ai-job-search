@@ -21,6 +21,27 @@ header {
   margin-bottom: 10px;
 }
 
+nav { display: flex; gap: 12px; }
+
+#history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+#history-list li {
+  padding: 6px 2px;
+  border-top: 1px solid var(--border);
+}
+
+#history-list .meta {
+  display: block;
+  font-size: 11px;
+  opacity: 0.65;
+}
+
 h1 { font-size: 16px; margin: 0; }
 h2 { font-size: 13px; margin: 10px 0 6px; }
 h3 { font-size: 12px; margin: 8px 0 4px; }

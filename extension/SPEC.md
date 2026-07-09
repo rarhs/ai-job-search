@@ -62,7 +62,9 @@ Each block ends with its verification step. Do not mark a block done until it pa
    `JobPosting` on every http(s) page (purely local, no network) and lights a
    green "JOB" **toolbar action badge** — chosen over an injected on-page badge
    to avoid breaking host pages. E2E covers badge on/off + structured extraction.
-7. *(v0.2)* History: store evaluations, list in popup, export JSON.
+7. ✅ *(v0.2)* History: every successful evaluation stored (capped at 50) with
+   timestamp, URL, scores and full evaluation JSON; History view in popup
+   (newest first), Export JSON download, Clear. E2E covers all of it.
 8. *(v0.2)* Firefox port (MV3 with `browser.*` polyfill), Chrome Web Store packaging.
 9. *(v0.3)* Profile import wizard: paste CV → LLM structures it into the profile.
 10. *(v0.3)* Streaming responses; token/cost display per call.

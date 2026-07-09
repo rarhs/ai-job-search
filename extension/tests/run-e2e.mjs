@@ -25,6 +25,18 @@ const CANNED_FIT = {
 // weighted: 82*.30 + 70*.25 + 75*.15 + 80*.30 = 77.35 -> 77 -> Strong Fit
 const EXPECTED_OVERALL = '77/100';
 const EXPECTED_VERDICT = 'Strong Fit';
+
+const CANNED_FIT_JSONLD = {
+  ...CANNED_FIT,
+  role: 'Machine Learning Engineer',
+  company: 'Nordlys Energy',
+  technical_skills: { score: 90, note: 'Time-series forecasting is a direct match' },
+  experience: { score: 85, note: 'Same domain, same stack' },
+  behavioral: { score: 80, note: 'Operator-facing communication matches' },
+  career: { score: 90, note: 'Exactly the stated direction' },
+};
+// weighted: 90*.30 + 85*.25 + 80*.15 + 90*.30 = 87.25 -> 87 -> Strong Fit
+const EXPECTED_JSONLD_OVERALL = 87;
 const CANNED_LETTER =
   'Dear Marie Holm,\n\nI am applying for the Senior Data Scientist role. ' +
   'I bring five years of Python forecasting work, demonstrated by production ' +
@@ -46,7 +58,10 @@ function startStub(fixtures) {
         const parsed = JSON.parse(body);
         seenRequests.push({ headers: req.headers, body: parsed });
         const isEvaluation = String(parsed.system).includes('career advisor');
-        const text = isEvaluation ? JSON.stringify(CANNED_FIT) : CANNED_LETTER;
+        const forJsonldPage = JSON.stringify(parsed.messages).includes('Nordlys Energy');
+        const text = isEvaluation
+          ? JSON.stringify(forJsonldPage ? CANNED_FIT_JSONLD : CANNED_FIT)
+          : CANNED_LETTER;
         res.writeHead(200, { 'content-type': 'application/json' });
         res.end(JSON.stringify({ content: [{ type: 'text', text }] }));
         return;
@@ -190,6 +205,38 @@ try {
   check('JSON-LD extraction used (title)', sentText.includes('Machine Learning Engineer'));
   check('JSON-LD extraction used (company)', sentText.includes('Nordlys Energy'));
   check('JSON-LD description HTML stripped', !sentText.includes('<p>'));
+
+  // --- block 7: evaluation history + export ---
+  await popup.click('#open-history');
+  await popup.waitForSelector('#history-section:not([hidden])', { timeout: 5000 });
+  const items = popup.locator('#history-list li');
+  check('two history entries after two evaluations', (await items.count()) === 2);
+  check('newest entry first',
+    (await items.nth(0).textContent()).includes(
+      `${EXPECTED_JSONLD_OVERALL}/100 Strong Fit — Machine Learning Engineer at Nordlys Energy`));
+  check('older entry second',
+    (await items.nth(1).textContent()).includes('Senior Data Scientist at Windward Analytics'));
+  check('entry records source URL',
+    (await items.nth(0).textContent()).includes('/job-jsonld'));
+
+  const [download] = await Promise.all([
+    popup.waitForEvent('download', { timeout: 5000 }),
+    popup.click('#export-history'),
+  ]);
+  const exported = JSON.parse(await readFile(await download.path(), 'utf8'));
+  check('export contains both entries with full evaluations',
+    exported.length === 2 &&
+    exported[0].overall === EXPECTED_JSONLD_OVERALL &&
+    exported[0].evaluation?.technical_skills?.score === 90 &&
+    exported[1].overall === 77);
+
+  await popup.click('#clear-history');
+  await popup.waitForFunction(() =>
+    document.querySelector('#history-list').textContent.includes('No evaluations yet'));
+  const { historyAfterClear } = await worker.evaluate(async () => ({
+    historyAfterClear: (await chrome.storage.local.get('history')).history ?? null,
+  }));
+  check('clear empties storage', historyAfterClear === null);
 } finally {
   await context.close();
   server.close();
