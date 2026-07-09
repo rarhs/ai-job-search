@@ -42,6 +42,15 @@ const CANNED_LETTER =
   'I bring five years of Python forecasting work, demonstrated by production ' +
   'models for regional grid operators.\n\nBest regards';
 
+const CANNED_PROFILE = [
+  '## Identity',
+  '- Name: Astrid Beck · Aalborg, Denmark · no relocation (not stated: commute radius)',
+  '## Experience',
+  '- Data Analyst, Fjord Analytics (2021-2025): built churn models in Python',
+  '## Skills',
+  '- Primary: Python, SQL · Secondary: R, Tableau',
+].join('\n');
+
 const seenRequests = [];
 
 function startStub(fixtures) {
@@ -57,11 +66,13 @@ function startStub(fixtures) {
         for await (const chunk of req) body += chunk;
         const parsed = JSON.parse(body);
         seenRequests.push({ headers: req.headers, body: parsed });
-        const isEvaluation = String(parsed.system).includes('career advisor');
+        const system = String(parsed.system);
         const forJsonldPage = JSON.stringify(parsed.messages).includes('Nordlys Energy');
-        const text = isEvaluation
-          ? JSON.stringify(forJsonldPage ? CANNED_FIT_JSONLD : CANNED_FIT)
-          : CANNED_LETTER;
+        let text;
+        if (system.includes('CV importer')) text = CANNED_PROFILE;
+        else if (system.includes('career advisor')) {
+          text = JSON.stringify(forJsonldPage ? CANNED_FIT_JSONLD : CANNED_FIT);
+        } else text = CANNED_LETTER;
         res.writeHead(200, { 'content-type': 'application/json' });
         res.end(JSON.stringify({ content: [{ type: 'text', text }] }));
         return;
@@ -129,7 +140,7 @@ try {
     'relocation. Goal: senior ML role in renewable energy.');
   await options.fill('#api-key', 'sk-ant-test-key');
   await options.selectOption('#model', 'claude-sonnet-5');
-  await options.click('details summary');
+  await options.click('#advanced summary');
   await options.fill('#base-url', baseUrl);
   await options.click('#save');
   await options.waitForFunction(
@@ -266,6 +277,40 @@ try {
   check('all shipped files staged in both builds', staged.every(Boolean));
   check('test fixtures not shipped',
     await readFile(path.join(EXT_DIR, 'dist/chrome/tests/run-e2e.mjs'), 'utf8').then(() => false, () => true));
+
+  // --- block 9: profile import wizard ---
+  const options2 = await context.newPage();
+  await options2.goto(`chrome-extension://${extId}/options/options.html`);
+  const savedProfileBefore = await options2.inputValue('#profile');
+
+  await options2.click('#import-wizard summary');
+  await options2.fill('#import-source',
+    'Astrid Beck, Aalborg. Data Analyst at Fjord Analytics 2021-2025, built churn ' +
+    'prediction models in Python and SQL dashboards for retention team. MSc Economics. ' +
+    'Comfortable with R and Tableau. Looking for senior analytics roles, no relocation.');
+  await options2.click('#import-run');
+  await options2.waitForFunction(() =>
+    document.getElementById('import-status').textContent.includes('Draft ready'));
+
+  check('import wizard fills profile with structured draft',
+    (await options2.inputValue('#profile')) === CANNED_PROFILE);
+  const importRequest = seenRequests.find((r) => String(r.body.system).includes('CV importer'));
+  check('raw CV text sent for structuring',
+    JSON.stringify(importRequest?.body.messages).includes('churn prediction models'));
+  check('import anti-fabrication rule in prompt',
+    String(importRequest?.body.system).includes('never invent or embellish'));
+
+  const { profile: storedAfterImport } = await worker.evaluate(
+    () => chrome.storage.local.get('profile'));
+  check('draft not auto-saved (review-then-save)', storedAfterImport === savedProfileBefore);
+
+  await options2.click('#save');
+  await options2.waitForFunction(
+    () => document.getElementById('saved-status').textContent === 'Saved');
+  const { profile: storedAfterSave } = await worker.evaluate(
+    () => chrome.storage.local.get('profile'));
+  check('explicit save persists the draft', storedAfterSave === CANNED_PROFILE);
+  await options2.close();
 } finally {
   await context.close();
   server.close();

@@ -71,7 +71,10 @@ Each block ends with its verification step. Do not mark a block done until it pa
    supports promise-style `chrome.*`). E2E verifies both staged manifests.
    Caveat: Firefox runtime is manual smoke-test only (Playwright can't load
    Firefox extensions); host permissions there are opt-in, documented in README.
-9. *(v0.3)* Profile import wizard: paste CV → LLM structures it into the profile.
+9. ✅ *(v0.3)* Profile import wizard in options: paste raw CV/LinkedIn text →
+   model structures it into markdown profile sections (anti-fabrication rules in
+   prompt, "(not stated)" for missing facts) → draft lands in the profile field
+   for review; nothing persists until explicit Save. E2E covers the full flow.
 10. *(v0.3)* Streaming responses; token/cost display per call.
 
 ## Testing contract

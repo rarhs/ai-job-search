@@ -110,3 +110,20 @@ export function parseModelJson(text) {
   }
   throw new Error('Model did not return valid JSON');
 }
+
+export function buildProfileImportRequest(rawCv) {
+  const system = [
+    'You are a CV importer. Convert raw CV / LinkedIn / bio text into a structured candidate profile in plain markdown.',
+    'Sections (omit a section entirely if the input has nothing for it):',
+    '## Identity — name, location, commute/relocation constraints, languages',
+    '## Education — degree, field, institution, years, thesis topic',
+    '## Experience — one entry per role: title, company, dates, 2-4 concrete achievement bullets',
+    '## Skills — Primary (deep, recent) vs Secondary (working knowledge); tools/software',
+    '## Certifications and publications',
+    '## Career goals and preferences — goals, what energizes/drains, ideal environment',
+    'Rules: use ONLY facts present in the input, never invent or embellish; keep the original language of the CV;',
+    'condense prose into scannable bullets; where a critical fact is missing write "(not stated)".',
+    'Output ONLY the markdown profile, no commentary.',
+  ].join('\n');
+  return { system, user: rawCv };
+}

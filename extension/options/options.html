@@ -17,6 +17,21 @@
   <textarea id="profile" rows="16" spellcheck="false"
     placeholder="Name, location and commute constraints, education, work history with concrete achievements, primary/secondary skills, career goals, what energizes or drains you..."></textarea>
 
+  <details id="import-wizard">
+    <summary>Import from CV (AI-assisted)</summary>
+    <label for="import-source">
+      Raw CV or LinkedIn text
+      <span class="hint">Paste the raw text; the model structures it into a profile draft above.
+      Nothing is saved until you review the draft and click Save. Requires the API key below.</span>
+    </label>
+    <textarea id="import-source" rows="8" spellcheck="false"
+      placeholder="Paste your CV text, LinkedIn 'About' + experience sections, or a bio..."></textarea>
+    <div class="row">
+      <button id="import-run">Structure into profile</button>
+      <span id="import-status"></span>
+    </div>
+  </details>
+
   <label for="api-key">
     Anthropic API key
     <span class="hint">Get one at console.anthropic.com. Sent only to the API endpoint below,
@@ -31,7 +46,7 @@
     <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (fastest, cheapest)</option>
   </select>
 
-  <details>
+  <details id="advanced">
     <summary>Advanced</summary>
     <label for="base-url">
       API base URL
