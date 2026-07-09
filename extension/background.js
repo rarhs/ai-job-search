@@ -52,6 +52,14 @@ async function callAnthropic({ system, user, maxTokens }) {
   return text;
 }
 
+// Content script detected a schema.org JobPosting on this tab.
+chrome.runtime.onMessage.addListener((message, sender) => {
+  if (message?.type !== 'job-detected' || sender.tab?.id === undefined) return false;
+  chrome.action.setBadgeText({ tabId: sender.tab.id, text: 'JOB' });
+  chrome.action.setBadgeBackgroundColor({ tabId: sender.tab.id, color: '#2e7d32' });
+  return false;
+});
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== 'anthropic') return false;
   callAnthropic(message.payload)

@@ -30,6 +30,10 @@ No backend, no telemetry. Your profile and API key live in `chrome.storage.local
 and are sent only to `api.anthropic.com` (or the base URL you configure) when you
 click a button. Note that extension storage is unencrypted at rest on your machine.
 
+A small content script runs on http(s) pages to detect job postings (schema.org
+JSON-LD) and light up the toolbar badge. It is purely local: it parses the page's
+structured data, sends nothing over the network, and reads nothing else.
+
 ## Development
 
 ```

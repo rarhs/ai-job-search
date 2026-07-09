@@ -32,12 +32,12 @@ const CANNED_LETTER =
 
 const seenRequests = [];
 
-function startStub(fixtureHtml) {
+function startStub(fixtures) {
   return new Promise((resolve) => {
     const server = http.createServer(async (req, res) => {
-      if (req.method === 'GET' && req.url === '/job') {
+      if (req.method === 'GET' && fixtures[req.url]) {
         res.writeHead(200, { 'content-type': 'text/html' });
-        res.end(fixtureHtml);
+        res.end(fixtures[req.url]);
         return;
       }
       if (req.method === 'POST' && req.url === '/v1/messages') {
@@ -67,9 +67,11 @@ function check(name, condition, detail = '') {
   }
 }
 
-const fixtureHtml = await readFile(
-  path.join(EXT_DIR, 'tests/fixture/job.html'), 'utf8');
-const server = await startStub(fixtureHtml);
+const fixtures = {
+  '/job': await readFile(path.join(EXT_DIR, 'tests/fixture/job.html'), 'utf8'),
+  '/job-jsonld': await readFile(path.join(EXT_DIR, 'tests/fixture/job-jsonld.html'), 'utf8'),
+};
+const server = await startStub(fixtures);
 const port = server.address().port;
 const baseUrl = `http://127.0.0.1:${port}`;
 console.log(`stub server on ${baseUrl}`);
@@ -155,6 +157,39 @@ try {
   const letterRequest = seenRequests.find((r) => String(r.body.system).includes('cover letters'));
   check('letter prompt includes evaluation JSON',
     JSON.stringify(letterRequest?.body.messages).includes('Kubernetes experience is thin'));
+
+  // --- block 6: JSON-LD auto-detection badge + structured extraction ---
+  const jsonldPage = await context.newPage();
+  await jsonldPage.goto(`${baseUrl}/job-jsonld`);
+
+  const badgeFor = (suffix) => worker.evaluate(async (sfx) => {
+    const tabs = await chrome.tabs.query({});
+    const tab = tabs.find((t) => (t.url || '').endsWith(sfx));
+    return tab ? chrome.action.getBadgeText({ tabId: tab.id }) : null;
+  }, suffix);
+
+  let badge = '';
+  for (let i = 0; i < 40 && badge !== 'JOB'; i += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    badge = await badgeFor('/job-jsonld');
+  }
+  check('badge lights up on JSON-LD job page', badge === 'JOB');
+  check('no badge on page without JSON-LD', (await badgeFor('/job')) === '');
+
+  // Evaluate on the JSON-LD page: extraction must use the structured data,
+  // not the (deliberately sparse) page body.
+  const evalCountBefore = seenRequests.length;
+  await jsonldPage.bringToFront();
+  await popup.bringToFront();
+  await popup.click('#evaluate');
+  await popup.waitForSelector('#results:not([hidden])', { timeout: 15000 });
+  const jsonldEval = seenRequests
+    .slice(evalCountBefore)
+    .find((r) => String(r.body.system).includes('career advisor'));
+  const sentText = JSON.stringify(jsonldEval?.body.messages);
+  check('JSON-LD extraction used (title)', sentText.includes('Machine Learning Engineer'));
+  check('JSON-LD extraction used (company)', sentText.includes('Nordlys Energy'));
+  check('JSON-LD description HTML stripped', !sentText.includes('<p>'));
 } finally {
   await context.close();
   server.close();

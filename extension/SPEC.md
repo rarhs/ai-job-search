@@ -45,20 +45,23 @@ Verdict thresholds: 75+ Strong Fit, 60–74 Good Fit, 45–59 Moderate Fit,
 
 Each block ends with its verification step. Do not mark a block done until it passes.
 
-1. **Core plumbing** — manifest.json, background.js message handler, prompts.js.
+1. ✅ **Core plumbing** — manifest.json, background.js message handler, prompts.js.
    Verify: extension loads in Chromium without manifest errors.
-2. **Options page** — profile textarea, API key field, model select
+2. ✅ **Options page** — profile textarea, API key field, model select
    (claude-sonnet-5 default / claude-opus-4-8 / claude-haiku-4-5-20251001),
    advanced base-URL override. Verify: values persist across reload.
-3. **Popup: evaluate** — extract job text from active tab, call API, render score
+3. ✅ **Popup: evaluate** — extract job text from active tab, call API, render score
    table, verdict badge, strengths/gaps, recommendation. Handle errors (no key,
    no profile, unparseable page, API error) with actionable messages.
-4. **Popup: cover letter** — after an evaluation, one click drafts a plain-text
+4. ✅ **Popup: cover letter** — after an evaluation, one click drafts a plain-text
    letter in the posting's language following the writing-style rules; copy button.
-5. **E2E test** — Playwright persistent context + `--load-extension`, local fixture
+5. ✅ **E2E test** — Playwright persistent context + `--load-extension`, local fixture
    job page, stub `/v1/messages` server. Asserts the full happy path and the
    no-key error path. This is the self-verification loop for all future work.
-6. *(v0.2)* Job-page auto-detection (JSON-LD `JobPosting` parsing) + on-page badge.
+6. ✅ *(v0.2)* Job-page auto-detection: `content/detect.js` parses JSON-LD
+   `JobPosting` on every http(s) page (purely local, no network) and lights a
+   green "JOB" **toolbar action badge** — chosen over an injected on-page badge
+   to avoid breaking host pages. E2E covers badge on/off + structured extraction.
 7. *(v0.2)* History: store evaluations, list in popup, export JSON.
 8. *(v0.2)* Firefox port (MV3 with `browser.*` polyfill), Chrome Web Store packaging.
 9. *(v0.3)* Profile import wizard: paste CV → LLM structures it into the profile.
