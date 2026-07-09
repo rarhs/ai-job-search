@@ -5,6 +5,7 @@ import {
   verdictFor,
   parseModelJson,
 } from '../lib/prompts.js';
+import { formatUsage } from '../lib/pricing.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -122,16 +123,35 @@ function extractJobText() {
   return tidy(document.title + '\n' + best).slice(0, 20000);
 }
 
-async function callModel(payload) {
-  const res = await chrome.runtime.sendMessage({ type: 'anthropic', payload });
-  if (!res) throw new Error('No response from background worker');
-  if (!res.ok) {
-    if (res.error.includes('NO_API_KEY')) {
-      throw new Error('No API key configured. Open Settings and paste your Anthropic API key.');
-    }
-    throw new Error(res.error.replace('API_ERROR: ', 'API error: '));
-  }
-  return res.text;
+// Streams via the background worker; resolves {text, usage, model}.
+function callModel(payload, onDelta) {
+  return new Promise((resolve, reject) => {
+    const port = chrome.runtime.connect({ name: 'anthropic-stream' });
+    let settled = false;
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      fn(value);
+    };
+    port.onMessage.addListener((msg) => {
+      if (msg.type === 'delta') {
+        onDelta?.(msg.text);
+      } else if (msg.type === 'done') {
+        finish(resolve, msg);
+        port.disconnect();
+      } else if (msg.type === 'error') {
+        const text = msg.error.includes('NO_API_KEY')
+          ? 'No API key configured. Open Settings and paste your Anthropic API key.'
+          : msg.error.replace('API_ERROR: ', 'API error: ');
+        finish(reject, new Error(text));
+        port.disconnect();
+      }
+    });
+    port.onDisconnect.addListener(() => {
+      finish(reject, new Error('Connection to background worker lost'));
+    });
+    port.postMessage(payload);
+  });
 }
 
 const DIMENSION_LABELS = {
@@ -208,7 +228,7 @@ $('evaluate').addEventListener('click', async () => {
 
     setStatus('Evaluating fit…');
     const { system, user } = buildEvaluationRequest(profile, jobText);
-    const raw = await callModel({ system, user, maxTokens: 1500 });
+    const { text: raw, usage, model } = await callModel({ system, user, maxTokens: 1500 });
     const evaluation = parseModelJson(raw);
     const overall = computeOverall(evaluation);
     if (overall === null) throw new Error('Model returned incomplete scores. Try again.');
@@ -216,6 +236,7 @@ $('evaluate').addEventListener('click', async () => {
     lastEvaluation = evaluation;
     setStatus('');
     renderEvaluation(evaluation, overall);
+    $('eval-usage').textContent = formatUsage(usage, model);
     await saveHistoryEntry({
       ts: Date.now(),
       url: tab.url,
@@ -239,9 +260,15 @@ $('draft-letter').addEventListener('click', async () => {
     const { profile } = await chrome.storage.local.get('profile');
     setStatus('Drafting cover letter…');
     const { system, user } = buildCoverLetterRequest(profile, lastJobText, lastEvaluation);
-    const letter = await callModel({ system, user, maxTokens: 1200 });
-    $('letter').value = letter.trim();
+    $('letter').value = '';
+    $('letter-usage').textContent = '';
     $('letter-section').hidden = false;
+    const { text: letter, usage, model } = await callModel(
+      { system, user, maxTokens: 1200 },
+      (chunk) => { $('letter').value += chunk; },
+    );
+    $('letter').value = letter.trim();
+    $('letter-usage').textContent = formatUsage(usage, model);
     setStatus('');
   } catch (err) {
     setStatus(String(err.message || err), true);

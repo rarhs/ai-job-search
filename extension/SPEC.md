@@ -75,7 +75,12 @@ Each block ends with its verification step. Do not mark a block done until it pa
    model structures it into markdown profile sections (anti-fabrication rules in
    prompt, "(not stated)" for missing facts) → draft lands in the profile field
    for review; nothing persists until explicit Save. E2E covers the full flow.
-10. *(v0.3)* Streaming responses; token/cost display per call.
+10. ✅ *(v0.3)* Streaming + cost: background worker streams SSE over a port,
+    the cover letter renders live into the popup; every call shows
+    "N in / M out tokens · ~$X" computed from `lib/pricing.js` (sticker
+    per-MTok rates cached 2026-06 from Anthropic pricing docs — update there
+    when prices change). E2E covers mid-stream partial render, usage math,
+    and that the wire request sets stream:true.
 
 ## Testing contract
 

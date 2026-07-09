@@ -51,6 +51,11 @@ const CANNED_PROFILE = [
   '- Primary: Python, SQL · Secondary: R, Tableau',
 ].join('\n');
 
+const STUB_INPUT_TOKENS = 1234;
+const STUB_OUTPUT_TOKENS = 567;
+// claude-sonnet-5 sticker pricing: (1234*3 + 567*15) / 1e6 = 0.0122
+const EXPECTED_COST = '~$0.0122';
+
 const seenRequests = [];
 
 function startStub(fixtures) {
@@ -73,6 +78,29 @@ function startStub(fixtures) {
         else if (system.includes('career advisor')) {
           text = JSON.stringify(forJsonldPage ? CANNED_FIT_JSONLD : CANNED_FIT);
         } else text = CANNED_LETTER;
+
+        if (parsed.stream) {
+          // Minimal Messages API SSE: usage in message_start / message_delta,
+          // text in three spaced-out deltas so the client's live render is testable.
+          res.writeHead(200, { 'content-type': 'text/event-stream' });
+          const send = (event) => res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+          send({ type: 'message_start', message: { usage: { input_tokens: STUB_INPUT_TOKENS } } });
+          send({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } });
+          const third = Math.ceil(text.length / 3);
+          const chunks = [text.slice(0, third), text.slice(third, 2 * third), text.slice(2 * third)];
+          send({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: chunks[0] } });
+          for (const [i, chunk] of [...chunks.entries()].slice(1)) {
+            await new Promise((resolve) => setTimeout(resolve, 400));
+            send({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: chunk } });
+            if (i === chunks.length - 1) {
+              send({ type: 'message_delta', usage: { output_tokens: STUB_OUTPUT_TOKENS } });
+              send({ type: 'message_stop' });
+            }
+          }
+          res.end();
+          return;
+        }
+
         res.writeHead(200, { 'content-type': 'application/json' });
         res.end(JSON.stringify({ content: [{ type: 'text', text }] }));
         return;
@@ -168,6 +196,10 @@ try {
   check('gap listed',
     (await popup.textContent('#gaps')).includes('Kubernetes'));
 
+  check('evaluation shows token usage and cost',
+    (await popup.textContent('#eval-usage')) === `1,234 in / 567 out tokens · ${EXPECTED_COST}`,
+    `got "${await popup.textContent('#eval-usage')}"`);
+
   const evalRequest = seenRequests.find((r) => String(r.body.system).includes('career advisor'));
   check('API key header sent', evalRequest?.headers['x-api-key'] === 'sk-ant-test-key');
   check('anthropic-version header sent', Boolean(evalRequest?.headers['anthropic-version']));
@@ -175,11 +207,28 @@ try {
   check('job text reached the API',
     JSON.stringify(evalRequest?.body.messages).includes('Windward Analytics'));
 
-  // --- happy path: cover letter ---
+  // --- happy path: cover letter (streamed) ---
   await popup.click('#draft-letter');
   await popup.waitForSelector('#letter-section:not([hidden])', { timeout: 15000 });
+
+  // The stub spaces deltas 400ms apart; catch the textarea mid-stream.
+  let sawPartial = false;
+  const fullLetter = CANNED_LETTER.trim();
+  for (let i = 0; i < 40 && !sawPartial; i += 1) {
+    const value = await popup.inputValue('#letter');
+    if (value.length > 0 && value.length < fullLetter.length) sawPartial = true;
+    else await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  check('letter streams incrementally into the textarea', sawPartial);
+
+  await popup.waitForFunction((expected) =>
+    document.getElementById('letter').value === expected, fullLetter, { timeout: 15000 });
   check('letter rendered from API response',
-    (await popup.inputValue('#letter')) === CANNED_LETTER.trim());
+    (await popup.inputValue('#letter')) === fullLetter);
+  check('letter shows token usage and cost',
+    (await popup.textContent('#letter-usage')) === `1,234 in / 567 out tokens · ${EXPECTED_COST}`);
+  check('letter request used streaming',
+    seenRequests.find((r) => String(r.body.system).includes('cover letters'))?.body.stream === true);
   const letterRequest = seenRequests.find((r) => String(r.body.system).includes('cover letters'));
   check('letter prompt includes evaluation JSON',
     JSON.stringify(letterRequest?.body.messages).includes('Kubernetes experience is thin'));
