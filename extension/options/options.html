@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>JobFit Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <h1>JobFit Settings</h1>
+
+  <label for="profile">
+    Candidate profile
+    <span class="hint">Paste your CV text or a profile summary: education, experience, skills,
+    what energizes you, career goals, location constraints. The richer this is, the better
+    the fit scores and cover letters. Stored only in this browser.</span>
+  </label>
+  <textarea id="profile" rows="16" spellcheck="false"
+    placeholder="Name, location and commute constraints, education, work history with concrete achievements, primary/secondary skills, career goals, what energizes or drains you..."></textarea>
+
+  <label for="api-key">
+    Anthropic API key
+    <span class="hint">Get one at console.anthropic.com. Sent only to the API endpoint below,
+    stored unencrypted in this browser's extension storage.</span>
+  </label>
+  <input type="password" id="api-key" placeholder="sk-ant-...">
+
+  <label for="model">Model</label>
+  <select id="model">
+    <option value="claude-sonnet-5">Claude Sonnet 5 (recommended)</option>
+    <option value="claude-opus-4-8">Claude Opus 4.8 (highest quality, slower)</option>
+    <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (fastest, cheapest)</option>
+  </select>
+
+  <details>
+    <summary>Advanced</summary>
+    <label for="base-url">
+      API base URL
+      <span class="hint">Leave empty for https://api.anthropic.com. Only change this for a
+      proxy or testing.</span>
+    </label>
+    <input type="text" id="base-url" placeholder="https://api.anthropic.com">
+  </details>
+
+  <div class="row">
+    <button id="save">Save</button>
+    <span id="saved-status"></span>
+  </div>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>

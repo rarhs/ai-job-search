@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "JobFit — AI Job Application Assistant",
+  "version": "0.1.0",
+  "description": "Evaluate any job posting against your profile and draft a tailored cover letter. Bring your own Anthropic API key; everything stays local.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": [
+    "https://api.anthropic.com/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "JobFit: evaluate this job posting"
+  },
+  "options_page": "options/options.html"
+}

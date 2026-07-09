@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <h1>JobFit</h1>
+    <a href="#" id="open-options">Settings</a>
+  </header>
+
+  <div id="status" hidden></div>
+
+  <button id="evaluate" class="primary">Evaluate this job posting</button>
+
+  <section id="results" hidden>
+    <div id="verdict-row">
+      <span id="overall"></span>
+      <span id="verdict"></span>
+    </div>
+    <h2 id="role-line"></h2>
+    <table id="scores">
+      <tbody></tbody>
+    </table>
+    <div class="lists">
+      <div>
+        <h3>Strengths</h3>
+        <ul id="strengths"></ul>
+      </div>
+      <div>
+        <h3>Gaps</h3>
+        <ul id="gaps"></ul>
+      </div>
+    </div>
+    <p id="recommendation"></p>
+    <button id="draft-letter" class="primary">Draft cover letter</button>
+  </section>
+
+  <section id="letter-section" hidden>
+    <h3>Cover letter draft</h3>
+    <textarea id="letter" rows="14" spellcheck="false"></textarea>
+    <div class="row">
+      <button id="copy-letter">Copy to clipboard</button>
+      <span id="copy-status"></span>
+    </div>
+  </section>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
