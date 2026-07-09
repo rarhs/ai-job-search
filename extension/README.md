@@ -9,6 +9,24 @@ workflow (same scoring framework and writing rules, see [SPEC.md](SPEC.md)).
 
 1. Open `chrome://extensions`, enable **Developer mode**
 2. **Load unpacked** → select this `extension/` folder
+
+## Install (Firefox 121+)
+
+Build first (`node build.mjs`), then either load `dist/firefox/` temporarily via
+`about:debugging` → This Firefox → Load Temporary Add-on (select its
+`manifest.json`), or use [web-ext](https://extensionworkshop.com/documentation/develop/getting-started-with-web-ext/):
+`web-ext run --source-dir dist/firefox`. Note: Firefox treats MV3 host
+permissions as opt-in, so grant the extension access when prompted for the
+job-detection badge to work. Firefox runtime behavior is not covered by the
+automated E2E suite (Playwright cannot load Firefox extensions) — smoke-test
+manually after changes.
+
+## Store packaging
+
+`node build.mjs` stages `dist/chrome/` and `dist/firefox/` (plus `.zip` archives
+when the `zip` CLI is present) with the test-only localhost permissions removed
+and browser-appropriate manifests: Chrome keeps the service-worker background,
+Firefox gets an event-page background and a gecko add-on ID.
 3. Click the JobFit icon → **Settings**:
    - Paste your candidate profile (CV text, skills, career goals, location constraints)
    - Paste your Anthropic API key ([console.anthropic.com](https://console.anthropic.com))

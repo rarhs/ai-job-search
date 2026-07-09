@@ -65,7 +65,12 @@ Each block ends with its verification step. Do not mark a block done until it pa
 7. ✅ *(v0.2)* History: every successful evaluation stored (capped at 50) with
    timestamp, URL, scores and full evaluation JSON; History view in popup
    (newest first), Export JSON download, Clear. E2E covers all of it.
-8. *(v0.2)* Firefox port (MV3 with `browser.*` polyfill), Chrome Web Store packaging.
+8. ✅ *(v0.2)* Cross-browser builds: `build.mjs` stages `dist/chrome` +
+   `dist/firefox` (and zips) — test-only localhost permissions stripped, Firefox
+   gets event-page background + gecko id (no polyfill needed: Firefox 121+
+   supports promise-style `chrome.*`). E2E verifies both staged manifests.
+   Caveat: Firefox runtime is manual smoke-test only (Playwright can't load
+   Firefox extensions); host permissions there are opt-in, documented in README.
 9. *(v0.3)* Profile import wizard: paste CV → LLM structures it into the profile.
 10. *(v0.3)* Streaming responses; token/cost display per call.
 

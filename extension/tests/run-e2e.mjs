@@ -237,6 +237,35 @@ try {
     historyAfterClear: (await chrome.storage.local.get('history')).history ?? null,
   }));
   check('clear empties storage', historyAfterClear === null);
+
+  // --- block 8: cross-browser store builds ---
+  const { execFile } = await import('node:child_process');
+  const { promisify } = await import('node:util');
+  await promisify(execFile)('node', [path.join(EXT_DIR, 'build.mjs')]);
+
+  const distManifest = async (browser) =>
+    JSON.parse(await readFile(path.join(EXT_DIR, 'dist', browser, 'manifest.json'), 'utf8'));
+  const chromeDist = await distManifest('chrome');
+  const firefoxDist = await distManifest('firefox');
+
+  check('chrome build drops test-only host permissions',
+    chromeDist.host_permissions.every((p) => !p.includes('localhost') && !p.includes('127.0.0.1')) &&
+    chromeDist.host_permissions.includes('https://api.anthropic.com/*'));
+  check('chrome build keeps service worker background',
+    chromeDist.background.service_worker === 'background.js' && !chromeDist.browser_specific_settings);
+  check('firefox build uses event-page background',
+    JSON.stringify(firefoxDist.background) === JSON.stringify({ scripts: ['background.js'] }));
+  check('firefox build has gecko id and no test permissions',
+    firefoxDist.browser_specific_settings?.gecko?.id === 'jobfit@ai-job-search' &&
+    firefoxDist.host_permissions.every((p) => !p.includes('127.0.0.1') && !p.includes('localhost')));
+
+  const staged = await Promise.all(
+    ['popup/popup.html', 'options/options.js', 'content/detect.js', 'lib/prompts.js', 'background.js']
+      .flatMap((f) => ['chrome', 'firefox'].map((b) =>
+        readFile(path.join(EXT_DIR, 'dist', b, f), 'utf8').then(() => true, () => false))));
+  check('all shipped files staged in both builds', staged.every(Boolean));
+  check('test fixtures not shipped',
+    await readFile(path.join(EXT_DIR, 'dist/chrome/tests/run-e2e.mjs'), 'utf8').then(() => false, () => true));
 } finally {
   await context.close();
   server.close();
